@@ -73,13 +73,13 @@ data/uploads              photos en local (Vercel Blob en production), servies p
 
 ## Déploiement sur Vercel
 
-1. **Importer le dépôt** dans Vercel (framework détecté : Next.js). Le premier déploiement échoue tant que la base n'existe pas : c'est normal.
+1. **Importer le dépôt** dans Vercel (framework détecté : Next.js). Sans base de données, le site affiche une page « Configuration requise » qui rappelle ces étapes.
 2. **Base de données** : onglet *Storage* du projet → *Create Database* → **Neon** (Postgres) → *Connect Project*. Vercel ajoute `DATABASE_URL` automatiquement.
 3. **Photos** : *Storage* → *Create* → **Blob** → *Connect Project*. Vercel ajoute `BLOB_READ_WRITE_TOKEN`.
 4. **Secret de session** : *Settings → Environment Variables* → `SESSION_SECRET` = une longue chaîne aléatoire.
 5. **Redéployer** (*Deployments → Redeploy*). Le build exécute `scripts/prepare-db.ts` : création des tables puis, si la base est vide, chargement de la démo (comptes ci-dessus). Changez ensuite le mot de passe du gestionnaire.
 
-Sans `DATABASE_URL`, le build s'arrête avec un message explicite au lieu de déployer un site qui plante.
+Variables reconnues : `DATABASE_URL` (ou `POSTGRES_PRISMA_URL` / `POSTGRES_URL`) pour l'application, et `DATABASE_URL_UNPOOLED` / `POSTGRES_URL_NON_POOLING` (si présentes) pour la création des tables. Si le build échoue, ouvrez le journal du déploiement : la dernière ligne indique la cause (connexion refusée, mot de passe, etc.).
 
 ### Autres hébergeurs / évolutions
 
