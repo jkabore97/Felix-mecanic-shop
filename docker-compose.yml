@@ -1,0 +1,15 @@
+# Base PostgreSQL pour le développement local : docker compose up -d
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: felix
+      POSTGRES_PASSWORD: felix
+      POSTGRES_DB: felix
+    ports:
+      - "5432:5432"
+    volumes:
+      - felix-pgdata:/var/lib/postgresql/data
+volumes:
+  felix-pgdata:

@@ -44,10 +44,9 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
   const store = await cookies();
   const id = store.get(COOKIE)?.value;
   if (!id) return null;
-  const session = await prisma.session.findUnique({
-    where: { id },
-    include: { user: true },
-  });
+  const session = await prisma.session
+    .findUnique({ where: { id }, include: { user: true } })
+    .catch(() => null);
   if (!session || session.expiresAt < new Date()) return null;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { passwordHash, ...safe } = session.user;

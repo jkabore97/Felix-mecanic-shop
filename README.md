@@ -31,17 +31,20 @@ Interface en français, prix en FCFA, paiement Orange Money / Moov Money ou à l
 
 ## Stack
 
-Next.js 15 (App Router, Server Actions) · React 19 · TypeScript · Tailwind CSS 4 · Prisma 6 · SQLite (dev) · bcryptjs · zod · lucide-react.
+Next.js 15 (App Router, Server Actions) · React 19 · TypeScript · Tailwind CSS 4 · Prisma 6 · PostgreSQL · Vercel Blob (photos) · bcryptjs · zod · lucide-react.
 
 ## Démarrage
 
 ```bash
-npm install            # génère aussi le client Prisma
+docker compose up -d   # PostgreSQL local (ou toute autre base PostgreSQL)
 cp .env.example .env   # DATABASE_URL + SESSION_SECRET
-npm run db:push        # crée la base SQLite
-npm run db:seed        # données de démonstration
+npm install            # génère aussi le client Prisma
+npm run db:push        # crée les tables
+npm run db:seed        # données de démonstration (ne fait rien si la base contient déjà des comptes)
 npm run dev            # http://localhost:3000
 ```
+
+`npm run db:seed:force` efface tout et recharge la démo.
 
 Comptes de démonstration (mot de passe entre parenthèses) :
 
@@ -52,28 +55,37 @@ Comptes de démonstration (mot de passe entre parenthèses) :
 | Client        | 70000003  | `client2026`  |
 | Vendeur       | 70000004  | `vendeur2026` |
 
-Autres scripts : `npm run build`, `npm run start`, `npm run lint`, `npm run typecheck`, `npm run db:reset`.
+Autres scripts : `npm run build` (prépare la base puis compile), `npm run start`, `npm run lint`, `npm run typecheck`.
 
 ## Structure
 
 ```
 prisma/schema.prisma      modèle de données (User, Product, Order, PartRequest, VehicleType/Brand/Model, Category…)
-prisma/seed.ts            données de démo (référentiel BF, pièces, comptes)
+prisma/seed.ts            données de démo (référentiel BF, pièces, comptes) — idempotent
+scripts/prepare-db.ts     exécuté avant `next build` : prisma generate + db push + seed si vide
 src/app                   pages (App Router) : /, /catalogue, /piece/[slug], /panier, /commande, /vendre, /demande, /compte, /admin/*, /livreur
 src/actions               server actions : auth, orders, listings, admin, courier
 src/lib                   prisma, auth (sessions cookie), catalog (recherche + facettes), cart (localStorage), upload, format, delivery
 src/components            UI partagée (header, cartes produit, formulaires…)
 public/images/parts       illustrations SVG de démonstration
-data/uploads              photos envoyées par les utilisateurs, servies par /uploads/[name] (ignoré par git)
+data/uploads              photos en local (Vercel Blob en production), servies par /uploads/[name]
 ```
 
-## Mise en production
+## Déploiement sur Vercel
 
-- **Base de données** : passer `provider = "postgresql"` dans `prisma/schema.prisma` et `DATABASE_URL` vers PostgreSQL (Neon, Supabase, Railway…), puis `prisma migrate deploy`.
-- **Images** : `src/lib/upload.ts` écrit dans `data/uploads` (variable `UPLOAD_DIR`) et `/uploads/[name]` les sert. Sur un hébergement sans disque persistant (Vercel), remplacer par un stockage objet (Cloudinary, S3, UploadThing).
-- **Paiement** : le flux Mobile Money est manuel (référence saisie par le client, validation par le gestionnaire). Une intégration API Orange Money / Moov Money ou un agrégateur (CinetPay, PayDunya, FedaPay) peut remplacer cette étape sans changer le modèle de commande.
-- **Notifications** : ajouter SMS / WhatsApp (Twilio, Orange SMS API) sur les changements de statut de commande et de validation d'annonce.
-- **Sécurité** : définir un `SESSION_SECRET` fort, activer HTTPS, limiter les tentatives de connexion.
+1. **Importer le dépôt** dans Vercel (framework détecté : Next.js). Le premier déploiement échoue tant que la base n'existe pas : c'est normal.
+2. **Base de données** : onglet *Storage* du projet → *Create Database* → **Neon** (Postgres) → *Connect Project*. Vercel ajoute `DATABASE_URL` automatiquement.
+3. **Photos** : *Storage* → *Create* → **Blob** → *Connect Project*. Vercel ajoute `BLOB_READ_WRITE_TOKEN`.
+4. **Secret de session** : *Settings → Environment Variables* → `SESSION_SECRET` = une longue chaîne aléatoire.
+5. **Redéployer** (*Deployments → Redeploy*). Le build exécute `scripts/prepare-db.ts` : création des tables puis, si la base est vide, chargement de la démo (comptes ci-dessus). Changez ensuite le mot de passe du gestionnaire.
+
+Sans `DATABASE_URL`, le build s'arrête avec un message explicite au lieu de déployer un site qui plante.
+
+### Autres hébergeurs / évolutions
+
+- **Base** : n'importe quel PostgreSQL (Neon, Supabase, Railway, serveur dédié). Pour les migrations versionnées, remplacer `prisma db push` par `prisma migrate deploy`.
+- **Paiement** : le flux Mobile Money est manuel (référence saisie par le client, validation par le gestionnaire). Une API Orange Money / Moov Money ou un agrégateur (CinetPay, PayDunya, FedaPay) peut remplacer cette étape sans changer le modèle de commande.
+- **Notifications** : SMS / WhatsApp (Twilio, Orange SMS API) sur les changements de statut de commande et la validation d'annonce.
 - **Frais de livraison** : `src/lib/delivery.ts` (villes et tarifs) ; à déplacer en base si le gestionnaire doit les modifier lui-même.
 
 ## Conseils de design pour la vitrine
