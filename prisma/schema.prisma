@@ -1,0 +1,279 @@
+// Felix Mécanic — modèle de données
+// SQLite en développement ; passer à PostgreSQL en production en changeant `provider` et DATABASE_URL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Utilisateurs & sessions ----------
+
+enum Role {
+  BUYER    // acheteur (peut aussi proposer des pièces à la vente)
+  MANAGER  // gestionnaire de l'application
+  COURIER  // livreur
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  phone        String   @unique
+  email        String?  @unique
+  passwordHash String
+  role         Role     @default(BUYER)
+  city         String?
+  address      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions       Session[]
+  products       Product[]     @relation("SellerProducts")
+  orders         Order[]       @relation("BuyerOrders")
+  deliveries     Order[]       @relation("CourierOrders")
+  partRequests   PartRequest[]
+  reviewedItems  Product[]     @relation("ReviewedProducts")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------- Référentiel véhicules (géré uniquement par le gestionnaire) ----------
+
+model VehicleType {
+  id        String   @id @default(cuid())
+  name      String   @unique // Voiture, Moto, Vélo, Tricycle…
+  slug      String   @unique
+  icon      String   @default("car")
+  sortOrder Int      @default(0)
+
+  brands       Brand[]
+  products     Product[]
+  partRequests PartRequest[]
+}
+
+model Brand {
+  id            String      @id @default(cuid())
+  name          String
+  slug          String
+  vehicleTypeId String
+  vehicleType   VehicleType @relation(fields: [vehicleTypeId], references: [id], onDelete: Cascade)
+
+  models       VehicleModel[]
+  products     Product[]
+  partRequests PartRequest[]
+
+  @@unique([vehicleTypeId, slug])
+}
+
+model VehicleModel {
+  id       String @id @default(cuid())
+  name     String
+  slug     String
+  brandId  String
+  brand    Brand  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  yearFrom Int?
+  yearTo   Int?
+
+  compatibilities ProductCompatibility[]
+
+  @@unique([brandId, slug])
+}
+
+model Category {
+  id        String @id @default(cuid())
+  name      String @unique
+  slug      String @unique
+  icon      String @default("wrench")
+  sortOrder Int    @default(0)
+
+  products Product[]
+}
+
+// ---------- Annonces / pièces ----------
+
+enum Condition {
+  NEW
+  USED
+  REFURBISHED
+}
+
+enum ProductStatus {
+  PENDING   // soumis par un vendeur, en attente de validation
+  APPROVED  // visible dans la vitrine
+  REJECTED  // refusé par le gestionnaire
+  SOLD      // stock épuisé
+  ARCHIVED  // retiré
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  description String
+  price       Int           // en FCFA
+  condition   Condition     @default(USED)
+  status      ProductStatus @default(PENDING)
+  quantity    Int           @default(1)
+  reference   String?       // référence constructeur / OEM
+  featured    Boolean       @default(false)
+
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id])
+  vehicleTypeId String
+  vehicleType   VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  brandId       String?
+  brand         Brand?      @relation(fields: [brandId], references: [id])
+
+  // Vendeur (null = stock propre de Felix Mécanic). Jamais exposé aux acheteurs.
+  sellerId       String?
+  seller         User?   @relation("SellerProducts", fields: [sellerId], references: [id])
+  pickupCity     String?
+  pickupAddress  String?
+  pickupPhone    String?
+
+  reviewedById String?
+  reviewedBy   User?     @relation("ReviewedProducts", fields: [reviewedById], references: [id])
+  reviewNote   String?
+  reviewedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  images          ProductImage[]
+  compatibilities ProductCompatibility[]
+  orderItems      OrderItem[]
+
+  @@index([status, createdAt])
+  @@index([categoryId])
+  @@index([vehicleTypeId])
+  @@index([brandId])
+  @@index([sellerId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  sortOrder Int     @default(0)
+
+  @@index([productId])
+}
+
+model ProductCompatibility {
+  productId String
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  modelId   String
+  model     VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@id([productId, modelId])
+  @@index([modelId])
+}
+
+// ---------- Commandes & livraison ----------
+
+enum OrderStatus {
+  PENDING_PAYMENT // en attente de paiement / confirmation
+  PAID            // paiement confirmé par le gestionnaire
+  ASSIGNED        // livreur assigné
+  PICKED_UP       // récupéré chez le vendeur
+  DELIVERED       // livré à l'acheteur
+  CANCELLED
+}
+
+enum PaymentMethod {
+  ORANGE_MONEY
+  MOOV_MONEY
+  CASH_ON_DELIVERY
+}
+
+model Order {
+  id            Int           @id @default(autoincrement())
+  buyerId       String
+  buyer         User          @relation("BuyerOrders", fields: [buyerId], references: [id])
+  status        OrderStatus   @default(PENDING_PAYMENT)
+  paymentMethod PaymentMethod
+  paymentRef    String?       // référence de transaction Mobile Money saisie par l'acheteur
+  subtotal      Int
+  deliveryFee   Int           @default(0)
+  total         Int
+
+  deliveryName    String
+  deliveryPhone   String
+  deliveryCity    String
+  deliveryAddress String
+  deliveryNote    String?
+
+  courierId String?
+  courier   User?   @relation("CourierOrders", fields: [courierId], references: [id])
+
+  managerNote String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deliveredAt DateTime?
+
+  items OrderItem[]
+
+  @@index([buyerId])
+  @@index([courierId])
+  @@index([status])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  title     String  // instantané du titre
+  unitPrice Int
+  quantity  Int
+  sellerId  String? // instantané, pour la collecte
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// ---------- Demandes de pièces introuvables ----------
+
+enum RequestStatus {
+  OPEN
+  IN_PROGRESS
+  FOUND
+  CLOSED
+}
+
+model PartRequest {
+  id            String        @id @default(cuid())
+  userId        String?
+  user          User?         @relation(fields: [userId], references: [id])
+  contactName   String
+  contactPhone  String
+  title         String
+  description   String?
+  modelText     String?       // modèle / année en texte libre
+  vehicleTypeId String?
+  vehicleType   VehicleType?  @relation(fields: [vehicleTypeId], references: [id])
+  brandId       String?
+  brand         Brand?        @relation(fields: [brandId], references: [id])
+  imageUrl      String?
+  status        RequestStatus @default(OPEN)
+  managerNote   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status])
+  @@index([userId])
+}
