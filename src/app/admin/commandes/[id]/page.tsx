@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { updateOrder } from "@/actions/admin";
-import { formatDate, formatFCFA, ORDER_STATUS_LABEL, PAYMENT_LABEL } from "@/lib/format";
+import { displayPhone, formatDate, formatFCFA, ORDER_STATUS_LABEL, PAYMENT_LABEL } from "@/lib/format";
 import { OrderTracker } from "@/components/order-tracker";
 import { PageHeader, StatusBadge } from "@/components/ui";
 import type { OrderStatus } from "@prisma/client";
@@ -40,7 +40,7 @@ export default async function AdminOrderDetail({ params }: { params: Promise<{ i
       <PageHeader
         eyebrow={<Link href="/admin/commandes" className="hover:underline">← Commandes</Link>}
         title={`Commande n° ${order.id.toString().padStart(5, "0")}`}
-        description={`Passée le ${formatDate(order.createdAt)} par ${order.buyer.name} (+226 ${order.buyer.phone}).`}
+        description={`Passée le ${formatDate(order.createdAt)} par ${order.buyer.name} (${displayPhone(order.buyer.phone)}).`}
         action={<StatusBadge status={order.status} label={ORDER_STATUS_LABEL[order.status]} />}
       />
 

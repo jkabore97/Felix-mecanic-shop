@@ -10,8 +10,19 @@ export type ActionState = { error?: string; success?: string } | undefined;
 const phone = z
   .string()
   .trim()
-  .transform((v) => v.replace(/[\s.-]/g, "").replace(/^\+226/, "").replace(/^00226/, ""))
-  .pipe(z.string().regex(/^\d{8}$/, "Numéro invalide : 8 chiffres attendus (ex. 70 12 34 56)."));
+  .transform((v) => {
+    // Normalise : supprime espaces/tirets/points/parenthèses, convertit 00xx en +xx.
+    let s = v.replace(/[\s.()\-]/g, "");
+    if (s.startsWith("00")) s = "+" + s.slice(2);
+    // Numéro local burkinabè à 8 chiffres → ajoute l'indicatif +226.
+    if (/^\d{8}$/.test(s)) s = "+226" + s;
+    return s;
+  })
+  .pipe(
+    z
+      .string()
+      .regex(/^\+\d{8,15}$/, "Numéro invalide. Incluez l'indicatif pays, ex. +1 418 555 1234 ou +226 70 12 34 56."),
+  );
 
 function safeNext(next: unknown) {
   return typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/";
@@ -46,7 +57,11 @@ export async function login(_: ActionState, formData: FormData): Promise<ActionS
   const schema = z.object({ phone, password: z.string().min(1, "Mot de passe requis.") });
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const user = await prisma.user.findUnique({ where: { phone: parsed.data.phone } });
+  // Tolère les anciens numéros locaux à 8 chiffres (ex. comptes de démonstration).
+  const p = parsed.data.phone;
+  const legacy = p.match(/^\+226(\d{8})$/);
+  const candidates = legacy ? [p, legacy[1]] : [p];
+  const user = await prisma.user.findFirst({ where: { phone: { in: candidates } } });
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
     return { error: "Numéro ou mot de passe incorrect." };
   }

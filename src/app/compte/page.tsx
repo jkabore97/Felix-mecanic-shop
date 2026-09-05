@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { logout } from "@/actions/auth";
 import { withdrawListing } from "@/actions/listings";
-import { formatFCFA, formatShortDate, ORDER_STATUS_LABEL, PRODUCT_STATUS_LABEL, REQUEST_STATUS_LABEL, ROLE_LABEL } from "@/lib/format";
+import { displayPhone, formatFCFA, formatShortDate, ORDER_STATUS_LABEL, PRODUCT_STATUS_LABEL, REQUEST_STATUS_LABEL, ROLE_LABEL } from "@/lib/format";
 import { Alert, EmptyState, StatusBadge } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Mon compte" };
@@ -26,7 +26,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           <p className="eyebrow">{ROLE_LABEL[user.role]}</p>
           <h1 className="h2 mt-1">Bonjour, {user.name.split(" ")[0]}</h1>
           <p className="mt-1 text-sm text-muted">
-            +226 {user.phone}
+            {displayPhone(user.phone)}
             {user.city ? ` · ${user.city}` : ""}
           </p>
         </div>
