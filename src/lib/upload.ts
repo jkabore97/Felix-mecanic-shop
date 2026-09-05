@@ -2,7 +2,7 @@ import "server-only";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
-import { put } from "@vercel/blob";
+import { del, put } from "@vercel/blob";
 import { UPLOAD_DIR } from "./upload-config";
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -45,4 +45,19 @@ export async function saveImages(files: File[]): Promise<string[]> {
     if (url) urls.push(url);
   }
   return urls;
+}
+
+/** Supprime des images (best-effort). Sur Vercel Blob, supprime les objets ; en local, ignore. */
+export async function deleteImages(urls: string[]) {
+  if (urls.length === 0) return;
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const blobUrls = urls.filter((u) => u.startsWith("http"));
+    if (blobUrls.length) {
+      try {
+        await del(blobUrls);
+      } catch {
+        /* nettoyage non bloquant */
+      }
+    }
+  }
 }

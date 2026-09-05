@@ -72,7 +72,10 @@ export default async function AdminListings({ searchParams }: { searchParams: Pr
                     {p.featured && <span className="badge bg-ink text-lime">En avant</span>}
                     {p.sellerId ? <span className="badge-info">Vendeur particulier</span> : <span className="badge-success">Stock Felix</span>}
                   </div>
-                  <h3 className="mt-2 text-lg font-semibold">{p.title}</h3>
+                  <div className="mt-2 flex items-center gap-3">
+                    <h3 className="text-lg font-semibold">{p.title}</h3>
+                    <Link href={`/annonce/${p.id}/modifier`} className="text-xs font-medium text-accent-strong hover:underline">Modifier</Link>
+                  </div>
                   <p className="text-sm text-muted">
                     {p.vehicleType.name}
                     {p.brand ? ` · ${p.brand.name}` : ""} · {p.category.name}

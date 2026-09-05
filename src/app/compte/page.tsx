@@ -108,11 +108,18 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <StatusBadge status={p.status} label={PRODUCT_STATUS_LABEL[p.status]} />
-                    {(p.status === "PENDING" || p.status === "APPROVED") && (
-                      <form action={withdrawListing.bind(null, p.id)}>
-                        <button className="text-xs text-muted hover:text-danger">Retirer</button>
-                      </form>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {(p.status === "PENDING" || p.status === "APPROVED" || p.status === "REJECTED") && (
+                        <Link href={`/annonce/${p.id}/modifier`} className="text-xs font-medium text-accent-strong hover:underline">
+                          Modifier
+                        </Link>
+                      )}
+                      {(p.status === "PENDING" || p.status === "APPROVED") && (
+                        <form action={withdrawListing.bind(null, p.id)}>
+                          <button className="text-xs text-muted hover:text-danger">Retirer</button>
+                        </form>
+                      )}
+                    </div>
                   </div>
                 </li>
               ))}
