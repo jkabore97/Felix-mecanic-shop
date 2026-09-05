@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, hashPassword } from "@/lib/auth";
 import { slugify } from "@/lib/slug";
 import type { OrderStatus, ProductStatus, RequestStatus, Role } from "@prisma/client";
 
@@ -191,6 +191,22 @@ export async function deleteCategory(id: string) {
 }
 
 // ---------- Utilisateurs ----------
+
+export async function resetUserPassword(
+  _: { error?: string; success?: string } | undefined,
+  formData: FormData,
+): Promise<{ error?: string; success?: string }> {
+  await manager();
+  const userId = String(formData.get("userId") ?? "");
+  const schema = z.object({ password: z.string().min(6, "6 caractères minimum.") });
+  const parsed = schema.safeParse({ password: formData.get("password") });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return { error: "Utilisateur introuvable." };
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash: await hashPassword(parsed.data.password) } });
+  revalidatePath("/admin/utilisateurs");
+  return { success: `Mot de passe de ${target.name} réinitialisé.` };
+}
 
 export async function setUserRole(userId: string, formData: FormData) {
   const me = await manager();

@@ -4,6 +4,7 @@ import { LogOut, PackageSearch, Receipt, Tag } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { logout } from "@/actions/auth";
+import { ChangePasswordForm } from "@/components/change-password-form";
 import { withdrawListing } from "@/actions/listings";
 import { displayPhone, formatFCFA, formatShortDate, ORDER_STATUS_LABEL, PRODUCT_STATUS_LABEL, REQUEST_STATUS_LABEL, ROLE_LABEL } from "@/lib/format";
 import { Alert, EmptyState, StatusBadge } from "@/components/ui";
@@ -155,6 +156,10 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               ))}
             </ul>
           )}
+        </section>
+
+        <section className="lg:col-span-2">
+          <ChangePasswordForm />
         </section>
       </div>
     </div>

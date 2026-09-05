@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { createSession, destroySession, hashPassword, verifyPassword } from "@/lib/auth";
+import { createSession, destroySession, getCurrentUser, hashPassword, verifyPassword } from "@/lib/auth";
 
 export type ActionState = { error?: string; success?: string } | undefined;
 
@@ -68,6 +68,27 @@ export async function login(_: ActionState, formData: FormData): Promise<ActionS
   await createSession(user.id);
   const next = safeNext(formData.get("next"));
   redirect(next !== "/" ? next : user.role === "MANAGER" ? "/admin" : user.role === "COURIER" ? "/livreur" : "/");
+}
+
+export async function changePassword(_: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Connectez-vous d'abord." };
+  const schema = z
+    .object({
+      current: z.string().min(1, "Mot de passe actuel requis."),
+      next: z.string().min(6, "Nouveau mot de passe : 6 caractères minimum."),
+      confirm: z.string().min(1, "Confirmez le nouveau mot de passe."),
+    })
+    .refine((d) => d.next === d.confirm, { message: "Les deux mots de passe ne correspondent pas.", path: ["confirm"] });
+  const parsed = schema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const full = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!full || !(await verifyPassword(parsed.data.current, full.passwordHash))) {
+    return { error: "Mot de passe actuel incorrect." };
+  }
+  await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(parsed.data.next) } });
+  return { success: "Mot de passe mis à jour." };
 }
 
 export async function logout() {
