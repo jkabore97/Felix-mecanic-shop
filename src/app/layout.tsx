@@ -6,6 +6,7 @@ import { MobileNav } from "@/components/mobile-nav";
 import { getCurrentUser } from "@/lib/auth";
 import { isDatabaseConfigured } from "@/lib/db-url";
 import { SetupRequired } from "@/components/setup-required";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: {
@@ -40,6 +41,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <main className="flex-1">{children}</main>
         <Footer />
         <MobileNav user={user} />
+        <Analytics />
       </body>
     </html>
   );
