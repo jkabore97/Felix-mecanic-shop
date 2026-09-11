@@ -9,14 +9,18 @@ export function VehiclePicker({
   withModels = true,
   required = true,
   defaultTypeId,
+  defaultBrandId,
+  defaultModelIds = [],
 }: {
   tree: VehicleTree;
   withModels?: boolean;
   required?: boolean;
   defaultTypeId?: string;
+  defaultBrandId?: string;
+  defaultModelIds?: string[];
 }) {
   const [typeId, setTypeId] = useState(defaultTypeId ?? "");
-  const [brandId, setBrandId] = useState("");
+  const [brandId, setBrandId] = useState(defaultBrandId ?? "");
   const type = tree.find((t) => t.id === typeId);
   const brand = type?.brands.find((b) => b.id === brandId);
 
@@ -59,7 +63,7 @@ export function VehiclePicker({
           <div className="flex flex-wrap gap-2">
             {brand.models.map((m) => (
               <label key={m.id} className="pill cursor-pointer has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-white">
-                <input type="checkbox" name="modelIds" value={m.id} className="sr-only" />
+                <input type="checkbox" name="modelIds" value={m.id} defaultChecked={defaultModelIds.includes(m.id)} className="sr-only" />
                 {m.name}
               </label>
             ))}

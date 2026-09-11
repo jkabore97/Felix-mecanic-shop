@@ -4,6 +4,9 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { MobileNav } from "@/components/mobile-nav";
 import { getCurrentUser } from "@/lib/auth";
+import { isDatabaseConfigured } from "@/lib/db-url";
+import { SetupRequired } from "@/components/setup-required";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: {
@@ -21,6 +24,15 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  if (!isDatabaseConfigured()) {
+    return (
+      <html lang="fr">
+        <body className="min-h-dvh">
+          <SetupRequired blob={Boolean(process.env.BLOB_READ_WRITE_TOKEN)} />
+        </body>
+      </html>
+    );
+  }
   const user = await getCurrentUser();
   return (
     <html lang="fr">
@@ -29,6 +41,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <main className="flex-1">{children}</main>
         <Footer />
         <MobileNav user={user} />
+        <Analytics />
       </body>
     </html>
   );

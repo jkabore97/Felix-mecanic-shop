@@ -1,5 +1,11 @@
 import type { Condition, OrderStatus, PaymentMethod, ProductStatus, RequestStatus, Role } from "@prisma/client";
 
+export function displayPhone(phone: string) {
+  if (phone.startsWith("+")) return phone;
+  if (/^\d{8}$/.test(phone)) return "+226 " + phone; // ancien format local
+  return "+" + phone;
+}
+
 export function formatFCFA(amount: number) {
   return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(amount).replace(/ | /g, " ")} FCFA`;
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { setUserRole } from "@/actions/admin";
+import { ResetPasswordControl } from "@/components/reset-password-control";
 import { getCurrentUser } from "@/lib/auth";
 import { formatShortDate, ROLE_LABEL } from "@/lib/format";
 import { PageHeader } from "@/components/ui";
@@ -28,6 +29,7 @@ export default async function AdminUsers() {
               <th>Activité</th>
               <th>Inscrit le</th>
               <th>Rôle</th>
+              <th>Sécurité</th>
             </tr>
           </thead>
           <tbody>
@@ -55,6 +57,9 @@ export default async function AdminUsers() {
                       <button className="btn-soft btn-sm">OK</button>
                     </form>
                   )}
+                </td>
+                <td>
+                  <ResetPasswordControl userId={u.id} userName={u.name} />
                 </td>
               </tr>
             ))}

@@ -4,8 +4,9 @@ import { LogOut, PackageSearch, Receipt, Tag } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { logout } from "@/actions/auth";
+import { ChangePasswordForm } from "@/components/change-password-form";
 import { withdrawListing } from "@/actions/listings";
-import { formatFCFA, formatShortDate, ORDER_STATUS_LABEL, PRODUCT_STATUS_LABEL, REQUEST_STATUS_LABEL, ROLE_LABEL } from "@/lib/format";
+import { displayPhone, formatFCFA, formatShortDate, ORDER_STATUS_LABEL, PRODUCT_STATUS_LABEL, REQUEST_STATUS_LABEL, ROLE_LABEL } from "@/lib/format";
 import { Alert, EmptyState, StatusBadge } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Mon compte" };
@@ -26,7 +27,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           <p className="eyebrow">{ROLE_LABEL[user.role]}</p>
           <h1 className="h2 mt-1">Bonjour, {user.name.split(" ")[0]}</h1>
           <p className="mt-1 text-sm text-muted">
-            +226 {user.phone}
+            {displayPhone(user.phone)}
             {user.city ? ` · ${user.city}` : ""}
           </p>
         </div>
@@ -108,11 +109,18 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <StatusBadge status={p.status} label={PRODUCT_STATUS_LABEL[p.status]} />
-                    {(p.status === "PENDING" || p.status === "APPROVED") && (
-                      <form action={withdrawListing.bind(null, p.id)}>
-                        <button className="text-xs text-muted hover:text-danger">Retirer</button>
-                      </form>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {(p.status === "PENDING" || p.status === "APPROVED" || p.status === "REJECTED") && (
+                        <Link href={`/annonce/${p.id}/modifier`} className="text-xs font-medium text-accent-strong hover:underline">
+                          Modifier
+                        </Link>
+                      )}
+                      {(p.status === "PENDING" || p.status === "APPROVED") && (
+                        <form action={withdrawListing.bind(null, p.id)}>
+                          <button className="text-xs text-muted hover:text-danger">Retirer</button>
+                        </form>
+                      )}
+                    </div>
                   </div>
                 </li>
               ))}
@@ -148,6 +156,10 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               ))}
             </ul>
           )}
+        </section>
+
+        <section className="lg:col-span-2">
+          <ChangePasswordForm />
         </section>
       </div>
     </div>

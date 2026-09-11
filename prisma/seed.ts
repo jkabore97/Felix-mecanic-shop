@@ -13,6 +13,12 @@ function slugify(input: string) {
 }
 
 async function main() {
+  const force = process.argv.includes("--force");
+  const existing = await prisma.user.count();
+  if (existing > 0 && !force) {
+    console.log(`Base déjà initialisée (${existing} utilisateur(s)). Utilisez --force pour réinitialiser les données de démonstration.`);
+    return;
+  }
   console.log("→ Nettoyage…");
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();

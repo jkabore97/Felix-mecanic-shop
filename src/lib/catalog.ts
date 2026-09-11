@@ -57,11 +57,11 @@ function buildWhere(f: CatalogFilters): Prisma.ProductWhereInput {
     const q = f.q.trim();
     and.push({
       OR: [
-        { title: { contains: q } },
-        { description: { contains: q } },
-        { reference: { contains: q } },
-        { brand: { name: { contains: q } } },
-        { compatibilities: { some: { model: { name: { contains: q } } } } },
+        { title: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+        { reference: { contains: q, mode: "insensitive" } },
+        { brand: { name: { contains: q, mode: "insensitive" } } },
+        { compatibilities: { some: { model: { name: { contains: q, mode: "insensitive" } } } } },
       ],
     });
   }

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { saveImage, saveImages } from "@/lib/upload";
+import { deleteImages, saveImage, saveImages } from "@/lib/upload";
 import { uniqueSlug } from "@/lib/slug";
 import type { ActionState } from "./auth";
 
@@ -158,6 +158,70 @@ export async function submitPartRequest(_: ActionState, formData: FormData): Pro
     },
   });
   return { success: "Demande envoyée ! Felix Mécanic vous contacte dès qu'une pièce correspondante est trouvée." };
+}
+
+/**
+ * Modifier une annonce existante.
+ * - Gestionnaire : peut modifier n'importe quelle annonce.
+ * - Vendeur : peut modifier ses propres annonces (y compris publiées).
+ *   Une annonce refusée repasse « en attente » après modification ; sinon le statut est conservé.
+ */
+export async function updateListing(_: ActionState, formData: FormData): Promise<ActionState> {
+  const productId = String(formData.get("productId") ?? "");
+  const user = await getCurrentUser();
+  if (!user) return { error: "Connectez-vous pour modifier une annonce." };
+  const product = await prisma.product.findUnique({ where: { id: productId }, include: { images: true } });
+  if (!product) return { error: "Annonce introuvable." };
+  const isManager = user.role === "MANAGER";
+  const isOwner = !!product.sellerId && product.sellerId === user.id;
+  if (!isManager && !isOwner) return { error: "Vous n'avez pas accès à cette annonce." };
+
+  const r = await parseListing(formData);
+  if ("error" in r) return { error: r.error };
+
+  const keepIds = formData.getAll("keepImageIds").map(String);
+  const kept = product.images.filter((img) => keepIds.includes(img.id));
+  const removed = product.images.filter((img) => !keepIds.includes(img.id));
+
+  let newUrls: string[] = [];
+  try {
+    newUrls = await saveImages(r.files);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur lors de l'envoi des images." };
+  }
+  if (kept.length + newUrls.length === 0) {
+    return { error: "Gardez au moins une photo ou ajoutez-en une nouvelle." };
+  }
+
+  // Statut : le refus repasse en attente après correction ; sinon inchangé.
+  const nextStatus = !isManager && product.status === "REJECTED" ? "PENDING" : product.status;
+
+  await prisma.$transaction(async (tx) => {
+    if (removed.length) await tx.productImage.deleteMany({ where: { id: { in: removed.map((i) => i.id) } } });
+    await tx.productCompatibility.deleteMany({ where: { productId } });
+    await tx.product.update({
+      where: { id: productId },
+      data: {
+        ...r.data,
+        brandId: r.data.brandId ?? null,
+        reference: r.data.reference ?? null,
+        status: nextStatus,
+        ...(isManager ? { featured: formData.get("featured") === "on" } : {}),
+        ...(nextStatus === "PENDING" && !isManager ? { reviewNote: null } : {}),
+        compatibilities: { create: r.modelIds.map((modelId) => ({ modelId })) },
+        images: { create: newUrls.map((url, i) => ({ url, sortOrder: kept.length + i, alt: r.data.title })) },
+      },
+    });
+  });
+
+  // Nettoyage best-effort des fichiers supprimés (Vercel Blob).
+  await deleteImages(removed.map((i) => i.url));
+
+  revalidatePath("/");
+  revalidatePath("/catalogue");
+  revalidatePath(`/piece/${product.slug}`);
+  if (isManager) redirect(`/admin/annonces?statut=${nextStatus}`);
+  redirect("/compte");
 }
 
 export async function withdrawListing(productId: string) {

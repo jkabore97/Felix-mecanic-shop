@@ -1,12 +1,12 @@
 // Felix Mécanic — modèle de données
-// SQLite en développement ; passer à PostgreSQL en production en changeant `provider` et DATABASE_URL.
+// PostgreSQL partout (local : docker compose ; production : Neon / Vercel Postgres via DATABASE_URL).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

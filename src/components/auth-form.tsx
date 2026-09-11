@@ -32,10 +32,8 @@ export function AuthForm({ mode, next }: { mode: "login" | "register"; next?: st
           )}
           <label className="field">
             <span className="label">Téléphone</span>
-            <div className="flex">
-              <span className="grid shrink-0 place-items-center rounded-l-2xl border border-r-0 border-line bg-soft px-3 text-sm text-muted">+226</span>
-              <input name="phone" required inputMode="tel" autoComplete="tel-national" className="input rounded-l-none" placeholder="70 12 34 56" />
-            </div>
+            <input name="phone" required inputMode="tel" autoComplete="tel" className="input" placeholder="+1 418 555 1234" />
+            <span className="help">Avec l&apos;indicatif pays : +226 pour le Burkina, +1 pour le Canada/USA, etc.</span>
           </label>
           {!isLogin && (
             <>

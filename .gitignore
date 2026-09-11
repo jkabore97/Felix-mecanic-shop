@@ -44,5 +44,3 @@ next-env.d.ts
 # uploads utilisateurs
 data/uploads/*
 !data/uploads/.gitkeep
-# base SQLite
-prisma/*.db*
